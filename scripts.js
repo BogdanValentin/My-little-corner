@@ -195,6 +195,9 @@ class FashionGallery {
     this.draggable = null;
     this._isDragging = false;
     this.viewportObserver = null;
+    // Bound event handler references (so removeEventListener works)
+    this._boundHandleSplitAreaClick = this.handleSplitAreaClick.bind(this);
+    this._boundHandleZoomKeys = this.handleZoomKeys.bind(this);
     // Initialize sound system
     this.initSoundSystem();
     // Initialize image data
@@ -755,14 +758,14 @@ class FashionGallery {
       }
     );
     this.closeButton.classList.add("active");
-    // Add event listeners
+    // Add event listeners (use stored bound references so they can be removed)
     document
       .getElementById("splitLeft")
-      .addEventListener("click", this.handleSplitAreaClick.bind(this));
+      .addEventListener("click", this._boundHandleSplitAreaClick);
     document
       .getElementById("splitRight")
-      .addEventListener("click", this.handleSplitAreaClick.bind(this));
-    document.addEventListener("keydown", this.handleZoomKeys.bind(this));
+      .addEventListener("click", this._boundHandleSplitAreaClick);
+    document.addEventListener("keydown", this._boundHandleZoomKeys);
   }
   handleSplitAreaClick(e) {
     if (e.target === e.currentTarget) {
@@ -777,13 +780,16 @@ class FashionGallery {
     )
       return;
     this.soundSystem.play("close");
-    document.removeEventListener("keydown", this.handleZoomKeys);
+    document.removeEventListener("keydown", this._boundHandleZoomKeys);
     const splitLeft = document.getElementById("splitLeft");
     const splitRight = document.getElementById("splitRight");
     if (splitLeft)
-      splitLeft.removeEventListener("click", this.handleSplitAreaClick);
+      splitLeft.removeEventListener("click", this._boundHandleSplitAreaClick);
     if (splitRight)
-      splitRight.removeEventListener("click", this.handleSplitAreaClick);
+      splitRight.removeEventListener("click", this._boundHandleSplitAreaClick);
+    // Kill any pending/delayed tweens on the close button to prevent
+    // the enterZoomMode animation (0.9s delayed) from re-showing it
+    gsap.killTweensOf(this.closeButton);
     const splitContainer = this.splitScreenContainer;
     const selectedElement = this.zoomState.selectedItem.element;
     const selectedImg = this.zoomState.selectedItem.img;
@@ -834,6 +840,8 @@ class FashionGallery {
         }
       });
     }
+    // Remove active class immediately so pointer-events are disabled
+    this.closeButton.classList.remove("active");
     gsap.to(this.closeButton, {
       duration: 0.3,
       opacity: 0,
@@ -861,7 +869,6 @@ class FashionGallery {
         }
         splitContainer.classList.remove("active");
         document.body.classList.remove("zoom-mode");
-        this.closeButton.classList.remove("active");
         if (this.draggable) this.draggable.enable();
         this.zoomState.isActive = false;
         this.zoomState.selectedItem = null;
@@ -881,6 +888,128 @@ class FashionGallery {
     if (e.key === "Escape") {
       this.exitZoomMode();
     }
+  }
+  // --- Scroll-wheel zoom (desktop only) ---
+  initScrollZoom() {
+    this._scrollZoomDebounce = null;
+    this._scrollZoomTween = null;
+    this._targetZoom = this.config.currentZoom;
+    this._targetX = this.lastValidPosition.x;
+    this._targetY = this.lastValidPosition.y;
+
+    this.viewport.addEventListener("wheel", (e) => {
+      // Skip when in split-screen zoom mode or on mobile
+      if (this.zoomState.isActive || this.isMobile) return;
+      e.preventDefault();
+
+      const minZoom = this.calculateFitZoom();
+      const maxZoom = 1.0;
+      const zoomSpeed = 0.001;
+
+      const oldTargetZoom = this._targetZoom;
+      // Scroll-up (negative deltaY) = zoom in
+      let newZoom = oldTargetZoom - e.deltaY * zoomSpeed;
+      newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+      if (newZoom === oldTargetZoom) return;
+
+      // Read current rendered position for cursor-anchored zoom
+      const style = getComputedStyle(this.canvasWrapper);
+      const matrix = new DOMMatrix(style.transform);
+      const currentX = matrix.m41;
+      const currentY = matrix.m42;
+      const currentScale = matrix.a;
+
+      // Zoom toward mouse cursor based on where canvas actually is right now
+      const ratio = newZoom / currentScale;
+      const newX = e.clientX - (e.clientX - currentX) * ratio;
+      const newY = e.clientY - (e.clientY - currentY) * ratio;
+
+      this._targetZoom = newZoom;
+      this._targetX = newX;
+      this._targetY = newY;
+      this.config.currentZoom = newZoom;
+
+      // Kill previous tween and start a new animated one toward the target
+      if (this._scrollZoomTween) this._scrollZoomTween.kill();
+
+      this._scrollZoomTween = gsap.to(this.canvasWrapper, {
+        scale: newZoom,
+        x: newX,
+        y: newY,
+        duration: 0.45,
+        ease: "power2.out",
+        onUpdate: () => {
+          // Keep lastValidPosition in sync with the animating values
+          const m = new DOMMatrix(getComputedStyle(this.canvasWrapper).transform);
+          this.lastValidPosition.x = m.m41;
+          this.lastValidPosition.y = m.m42;
+        },
+        onComplete: () => {
+          this.lastValidPosition.x = newX;
+          this.lastValidPosition.y = newY;
+        }
+      });
+
+      this.updatePercentageIndicator(newZoom);
+      this.updateZoomButtonHighlight(newZoom);
+
+      // Debounce the heavier work (gap changes, bounds recalc)
+      clearTimeout(this._scrollZoomDebounce);
+      this._scrollZoomDebounce = setTimeout(() => {
+        this.finalizeScrollZoom(newZoom);
+      }, 300);
+    }, { passive: false });
+  }
+  finalizeScrollZoom(zoomLevel) {
+    const newGap = this.calculateGapForZoom(zoomLevel);
+
+    if (newGap !== this.config.currentGap) {
+      // Animate grid items to new gap positions
+      this.gridItems.forEach((itemData) => {
+        const newX = itemData.col * (this.config.itemSize + newGap);
+        const newY = itemData.row * (this.config.itemSize + newGap);
+        itemData.baseX = newX;
+        itemData.baseY = newY;
+        gsap.to(itemData.element, {
+          duration: 0.8,
+          left: newX,
+          top: newY,
+          ease: this.customEase
+        });
+      });
+
+      const newWidth = this.config.cols * (this.config.itemSize + newGap) - newGap;
+      const newHeight = this.config.rows * (this.config.itemSize + newGap) - newGap;
+      gsap.to(this.canvasWrapper, {
+        duration: 0.8,
+        width: newWidth,
+        height: newHeight,
+        ease: this.customEase,
+        onComplete: () => {
+          this.config.currentGap = newGap;
+          this.calculateGridDimensions(newGap);
+          this.initDraggable();
+        }
+      });
+    } else {
+      this.calculateGridDimensions(newGap);
+      this.initDraggable();
+    }
+  }
+  updateZoomButtonHighlight(zoomLevel) {
+    const buttons = document.querySelectorAll(".switch-button");
+    buttons.forEach((btn) => btn.classList.remove("switch-button-current"));
+    // Highlight the closest preset button
+    // buttons: [0]=NORMAL(0.6), [1]=ZOOM IN(1.0), [2]=FIT
+    const presets = [0.6, 1.0];
+    const tolerance = 0.05;
+    for (let i = 0; i < presets.length; i++) {
+      if (Math.abs(zoomLevel - presets[i]) < tolerance) {
+        buttons[i]?.classList.add("switch-button-current");
+        return;
+      }
+    }
+    // No preset matched — no button highlighted
   }
   calculateBounds() {
     const vw = window.innerWidth;
@@ -1243,11 +1372,10 @@ initDraggable() {
       buttonElement.classList.add("switch-button-current");
     } else {
       const buttons = document.querySelectorAll(".switch-button");
-      if (zoomLevel === 0.3) buttons[1].classList.add("switch-button-current");
-      else if (zoomLevel === 0.6)
-        buttons[2].classList.add("switch-button-current");
+      if (zoomLevel === 0.6)
+        buttons[0].classList.add("switch-button-current");
       else if (zoomLevel === 1.0)
-        buttons[3].classList.add("switch-button-current");
+        buttons[1].classList.add("switch-button-current");
     }
   }
   resetPosition() {
@@ -1361,17 +1489,18 @@ initDraggable() {
     }
     this.closeButton.addEventListener("click", () => this.exitZoomMode());
     this.soundToggle.addEventListener("click", () => this.soundSystem.toggle());
+    // Scroll-wheel zoom (desktop only)
+    if (!this.isMobile) {
+      this.initScrollZoom();
+    }
     // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
       if (this.zoomState.isActive) return;
       switch (e.key) {
         case "1":
-          this.setZoom(0.3);
-          break;
-        case "2":
           this.setZoom(0.6);
           break;
-        case "3":
+        case "2":
           this.setZoom(1.0);
           break;
         case "f":
