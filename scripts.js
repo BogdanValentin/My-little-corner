@@ -194,6 +194,7 @@ class FashionGallery {
     };
     this.draggable = null;
     this._isDragging = false;
+    this._isAnimating = false;
     this.viewportObserver = null;
     // Bound event handler references (so removeEventListener works)
     this._boundHandleSplitAreaClick = this.handleSplitAreaClick.bind(this);
@@ -205,7 +206,7 @@ class FashionGallery {
   }
   initSoundSystem() {
     this.soundSystem = {
-      enabled: false,
+      enabled: true,
       sounds: {
         click: new Audio("https://assets.codepen.io/7558/glitch-fx-001.mp3"),
         open: new Audio("https://assets.codepen.io/7558/click-glitch-001.mp3"),
@@ -218,14 +219,25 @@ class FashionGallery {
         ),
         "drag-start": new Audio(
           "https://assets.codepen.io/7558/preloader-2s-001.mp3"
-        ),
-        "drag-end": new Audio(
-          "https://assets.codepen.io/7558/preloader-2s-001.mp3"
         )
+      },
+      _lastPlayTime: {},
+      _debounceMs: {
+        "drag-start": 300,
+        "click": 300,
+        "open": 400,
+        "close": 400,
+        "zoom-in": 500,
+        "zoom-out": 500
       },
       play: (soundName) => {
         if (!this.soundSystem.enabled || !this.soundSystem.sounds[soundName])
           return;
+        const now = Date.now();
+        const cooldown = this.soundSystem._debounceMs[soundName] || 200;
+        const lastTime = this.soundSystem._lastPlayTime[soundName] || 0;
+        if (now - lastTime < cooldown) return;
+        this.soundSystem._lastPlayTime[soundName] = now;
         try {
           const audio = this.soundSystem.sounds[soundName];
           audio.currentTime = 0;
@@ -252,6 +264,8 @@ class FashionGallery {
       audio.preload = "auto";
       audio.volume = 0.3;
     });
+    // Set initial active state on the toggle button
+    this.soundToggle.classList.add("active");
     // Initialize sound wave canvas animation
     this.initSoundWave();
   }
@@ -1045,17 +1059,29 @@ initDraggable() {
   }
   
   this.calculateGridDimensions(this.config.currentGap);
-  const bounds = this.calculateBounds();
+  this._dragBounds = this.calculateBounds();
+  const edgeResistance = 0.15; // fraction of movement allowed past edge
   
   this.draggable = Draggable.create(this.canvasWrapper, {
     type: "x,y",
-    bounds: bounds,
-    edgeResistance: 0.8,
-    inertia: true,
     dragClickables: true,
     allowNativeTouchScrolling: false,
     zIndexBoost: false,
     minimumMovement: 3,
+    liveSnap: {
+      x: (value) => {
+        const b = this._dragBounds;
+        if (value > b.maxX) return b.maxX + (value - b.maxX) * edgeResistance;
+        if (value < b.minX) return b.minX + (value - b.minX) * edgeResistance;
+        return value;
+      },
+      y: (value) => {
+        const b = this._dragBounds;
+        if (value > b.maxY) return b.maxY + (value - b.maxY) * edgeResistance;
+        if (value < b.minY) return b.minY + (value - b.minY) * edgeResistance;
+        return value;
+      }
+    },
     onDragStart: () => {
       this._isDragging = true;
       document.body.classList.add("dragging");
@@ -1069,7 +1095,30 @@ initDraggable() {
     },
     onDragEnd: () => {
       document.body.classList.remove("dragging");
-      this.soundSystem.play("drag-end");
+      
+      // Smooth snap-back if dragged past bounds
+      const b = this._dragBounds;
+      const currentX = this.draggable.x;
+      const currentY = this.draggable.y;
+      const clampedX = Math.max(b.minX, Math.min(b.maxX, currentX));
+      const clampedY = Math.max(b.minY, Math.min(b.maxY, currentY));
+      
+      if (Math.abs(clampedX - currentX) > 0.5 || Math.abs(clampedY - currentY) > 0.5) {
+        gsap.to(this.canvasWrapper, {
+          x: clampedX,
+          y: clampedY,
+          duration: 0.5,
+          ease: "power3.out",
+          onUpdate: () => {
+            this.lastValidPosition.x = gsap.getProperty(this.canvasWrapper, "x");
+            this.lastValidPosition.y = gsap.getProperty(this.canvasWrapper, "y");
+          },
+          onComplete: () => {
+            this.draggable.update();
+          }
+        });
+      }
+      
       // Brief delay so the click handler can check _isDragging
       setTimeout(() => { this._isDragging = false; }, 50);
     }
@@ -1216,10 +1265,12 @@ initDraggable() {
     );
   }
   autoFitZoom(buttonElement = null) {
+    if (this._isAnimating) return;
     if (this.zoomState.isActive) {
       this.exitZoomMode();
       return;
     }
+    this._isAnimating = true;
     const fitZoom = this.calculateFitZoom();
     this.config.currentZoom = fitZoom;
     const newGap = this.calculateGapForZoom(fitZoom);
@@ -1279,6 +1330,7 @@ initDraggable() {
             this.lastValidPosition.x = finalCenterX;
             this.lastValidPosition.y = finalCenterY;
             this.initDraggable();
+            this._isAnimating = false;
           }
         });
       }
@@ -1298,10 +1350,12 @@ initDraggable() {
     ).textContent = `${percentage}%`;
   }
   setZoom(zoomLevel, buttonElement = null) {
+    if (this._isAnimating) return;
     if (this.zoomState.isActive) {
       this.exitZoomMode();
       return;
     }
+    this._isAnimating = true;
     const newGap = this.calculateGapForZoom(zoomLevel);
     const oldZoom = this.config.currentZoom;
     this.config.currentZoom = zoomLevel;
@@ -1360,6 +1414,7 @@ initDraggable() {
             this.lastValidPosition.y = finalCenterY;
             this.calculateGridDimensions(newGap);
             this.initDraggable();
+            this._isAnimating = false;
           }
         });
       }
