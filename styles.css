@@ -15,7 +15,7 @@
   --color-text: #ffffff;
   --color-text-dim: 0.6;
   --transition-medium: 0.3s ease;
-  --font-size-base: 14px;
+  --font-size-base: 36px;
 }
 
 * {
@@ -320,7 +320,7 @@ ul {
 }
 
 h3 {
-  font-size: 14px;
+  font-size: 36px;
   margin-bottom: var(--spacing-base);
   font-weight: 600;
   color: #fff;
