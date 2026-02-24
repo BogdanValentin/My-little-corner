@@ -1,24 +1,25 @@
 // ===== Ruler scroll percentages =====
 function updateScroller() {
   const scrollY = window.scrollY;
-  const vh = window.innerHeight;
-  const docH = document.documentElement.scrollHeight;
-  const scrollable = docH - vh;
+  const viewportHeight = window.innerHeight;
+  const documentHeight = document.documentElement.scrollHeight;
 
-  const topPct = scrollable > 0 ? Math.round((scrollY / scrollable) * 100) : 0;
-  const bottomPct = scrollable > 0
-    ? Math.round(((scrollY + vh) / docH) * 100)
-    : 100;
+  const top = Math.round((scrollY / (documentHeight - viewportHeight)) * 100);
+  const bottom = Math.round(
+    ((scrollY + viewportHeight - documentHeight) /
+      (documentHeight - viewportHeight)) *
+      100
+  );
 
   const maskOne = document.querySelector(".mask.one");
   const maskTwo = document.querySelector(".mask.two");
-  if (maskOne) maskOne.textContent = topPct + "%";
-  if (maskTwo) maskTwo.textContent = bottomPct + "%";
+  if (maskOne) maskOne.textContent = `${top}%`;
+  if (maskTwo) maskTwo.textContent = `${bottom}%`;
 
   // Show scroll-to-top button after scrolling past 1.2× viewport
   const scrollBtn = document.querySelector(".scroll");
   if (scrollBtn) {
-    scrollBtn.style.opacity = (scrollY > vh * 0.5) ? "1" : "0";
+    scrollBtn.style.opacity = (viewportHeight + window.pageYOffset > 1.2 * viewportHeight) ? "1" : "0";
   }
 }
 
