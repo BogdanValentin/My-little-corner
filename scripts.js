@@ -126,12 +126,7 @@ class PreloaderManager {
         }
       });
 
-      // Check if we should complete the loading
-      if (timestamp - this.startTime >= this.duration) {
-        this.complete();
-        return;
-      }
-
+      // Keep looping — the animation plays until complete() is called externally
       this.animationId = requestAnimationFrame(animate);
     };
 
@@ -869,10 +864,28 @@ class FashionGallery {
       duration: 0.8,
       ease: "power2.out"
     });
-    Flip.fit(this.zoomState.scalingOverlay, selectedElement, {
+    // Get the actual on-screen positions before clearing transforms
+    const overlay = this.zoomState.scalingOverlay;
+    const currentRect = overlay.getBoundingClientRect();
+    const targetRect = selectedElement.getBoundingClientRect();
+
+    // Clear Flip transforms and position overlay at its current visual location
+    gsap.set(overlay, {
+      clearProps: "transform",
+      left: currentRect.left,
+      top: currentRect.top,
+      width: currentRect.width,
+      height: currentRect.height
+    });
+
+    // Animate smoothly from current position/size to the original thumbnail
+    gsap.to(overlay, {
+      left: targetRect.left,
+      top: targetRect.top,
+      width: targetRect.width,
+      height: targetRect.height,
       duration: 1.2,
       ease: this.customEase,
-      absolute: true,
       onComplete: () => {
         gsap.set(selectedImg, {
           opacity: 1
@@ -889,13 +902,6 @@ class FashionGallery {
         this.zoomState.flipAnimation = null;
       }
     });
-    if (this.zoomState.scalingOverlay) {
-      gsap.to(this.zoomState.scalingOverlay, {
-        opacity: 0.4,
-        duration: 0.8,
-        ease: "power2.out"
-      });
-    }
   }
   handleZoomKeys(e) {
     if (!this.zoomState.isActive) return;
@@ -1571,17 +1577,32 @@ let gallery;
 document.addEventListener("DOMContentLoaded", () => {
   const preloader = new PreloaderManager();
 
-  // Wait for preloader to complete, then initialize gallery
-  setTimeout(() => {
-    preloader.complete(() => {
-      // Initialize gallery after preloader fades out
-      gallery = new FashionGallery();
-      gallery.init();
+  // Start initialising the gallery immediately so DOM & layout work
+  // happens behind the preloader overlay
+  gallery = new FashionGallery();
+  gallery.init();
+  initMobileMenu();
 
-      // Mobile hamburger menu
-      initMobileMenu();
-    });
-  }, 2000); // 2 seconds preloader duration
+  // Preload every gallery image in parallel
+  const preloadPromise = Promise.all(
+    gallery.fashionImages.map(
+      (src) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.onload = resolve;
+          img.onerror = resolve; // don't block on failure
+          img.src = src;
+        })
+    )
+  );
+
+  // Minimum animation time so the preloader doesn't flash away
+  const minTimePromise = new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Reveal only when both the images AND the minimum time are done
+  Promise.all([preloadPromise, minTimePromise]).then(() => {
+    preloader.complete();
+  });
 });
 
 function initMobileMenu() {
