@@ -693,64 +693,68 @@ class FashionGallery {
     gsap.set(selectedItemData.img, {
       opacity: 0
     });
-    this.zoomState.flipAnimation = Flip.fit(
-      this.zoomState.scalingOverlay,
-      zoomTarget,
-      {
-        duration: 1.2,
-        ease: this.customEase,
-        absolute: true,
-        onComplete: () => {
-          this.updateTitleOverlay(selectedItemData.index);
-          const imageTitleOverlay = this.imageTitleOverlay;
-          // Reset positions for animation
-          gsap.set("#imageSlideNumber span", {
-            y: 20,
-            opacity: 0
-          });
-          gsap.set("#imageSlideTitle h1", {
-            y: 60,
-            opacity: 0
-          });
-          gsap.set(this.descriptionLines, {
-            y: 80,
-            opacity: 0
-          });
-          // Show overlay container immediately
-          imageTitleOverlay.classList.add("active");
-          gsap.to(imageTitleOverlay, {
-            opacity: 1,
-            duration: 0.3,
-            ease: "power2.out"
-          });
-          // Animate in number - much sooner
-          gsap.to("#imageSlideNumber span", {
-            duration: 0.8,
-            y: 0,
-            opacity: 1,
-            ease: this.customEase,
-            delay: 0.1
-          });
-          // Animate in title - sooner
-          gsap.to("#imageSlideTitle h1", {
-            duration: 0.8,
-            y: 0,
-            opacity: 1,
-            ease: this.customEase,
-            delay: 0.15
-          });
-          // Animate description lines one by one - much sooner
-          gsap.to(this.descriptionLines, {
-            duration: 0.8,
-            y: 0,
-            opacity: 1,
-            ease: this.customEase,
-            delay: 0.2,
-            stagger: 0.15
-          });
-        }
+
+    // Animate overlay from thumbnail position to zoom target (reverse of close)
+    const overlay = this.zoomState.scalingOverlay;
+    const targetRect = zoomTarget.getBoundingClientRect();
+
+    this.zoomState.flipAnimation = gsap.to(overlay, {
+      left: targetRect.left,
+      top: targetRect.top,
+      width: targetRect.width,
+      height: targetRect.height,
+      duration: 1.2,
+      ease: this.customEase,
+      onComplete: () => {
+        this.updateTitleOverlay(selectedItemData.index);
+        const imageTitleOverlay = this.imageTitleOverlay;
+        // Reset positions for animation
+        gsap.set("#imageSlideNumber span", {
+          y: 20,
+          opacity: 0
+        });
+        gsap.set("#imageSlideTitle h1", {
+          y: 60,
+          opacity: 0
+        });
+        gsap.set(this.descriptionLines, {
+          y: 80,
+          opacity: 0
+        });
+        // Show overlay container immediately
+        imageTitleOverlay.classList.add("active");
+        gsap.to(imageTitleOverlay, {
+          opacity: 1,
+          duration: 0.3,
+          ease: "power2.out"
+        });
+        // Animate in number - much sooner
+        gsap.to("#imageSlideNumber span", {
+          duration: 0.8,
+          y: 0,
+          opacity: 1,
+          ease: this.customEase,
+          delay: 0.1
+        });
+        // Animate in title - sooner
+        gsap.to("#imageSlideTitle h1", {
+          duration: 0.8,
+          y: 0,
+          opacity: 1,
+          ease: this.customEase,
+          delay: 0.15
+        });
+        // Animate description lines one by one - much sooner
+        gsap.to(this.descriptionLines, {
+          duration: 0.8,
+          y: 0,
+          opacity: 1,
+          ease: this.customEase,
+          delay: 0.2,
+          stagger: 0.15
+        });
       }
-    );
+    });
     this.controlsContainer.classList.add("split-mode");
     gsap.fromTo(
       this.closeButton,
