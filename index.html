@@ -13,15 +13,10 @@
   <!-- Preloader -->
 <div id="preloader-overlay"></div>
 
-<!-- Header Navigation -->\n<div class="header">
-
+<!-- Header Navigation -->
+<div class="header">
   <div class="values-section">
-    <h3>+Menu</h3>
-    <ul>
-      <li><a href="index.html">Gallery</a></li>
-      <li><a href="about.html">About</a></li>
-      <li><a href="contact.html">Contact</a></li>
-    </ul>
+    <h3 class="active-category-indicator" id="activeCategoryLabel">All Work</h3>
   </div>
 </div>
 
@@ -39,6 +34,32 @@
       <a href="about.html" class="mobile-menu-link">About</a>
       <a href="contact.html" class="mobile-menu-link">Contact</a>
     </nav>
+  </div>
+</div>
+
+<!-- Category Index Overlay -->
+<div class="category-index" id="categoryIndex">
+  <button class="category-index-close" id="categoryIndexClose" aria-label="Close index">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <div class="category-index-inner">
+    <div class="category-list" id="categoryList">
+      <!-- Built by JavaScript from GALLERY_CATEGORIES -->
+    </div>
+    <div class="category-preview" id="categoryPreview">
+      <div class="category-preview-letter" id="categoryPreviewLetter">✦</div>
+      <img class="category-preview-img" id="categoryPreviewImg" src="" alt="">
+    </div>
+  </div>
+  <div class="category-index-footer">
+    <div class="category-index-nav">
+      <a href="about.html">About</a>
+      <span class="category-index-sep">/</span>
+      <a href="contact.html">Contact</a>
+    </div>
+    <p class="category-index-coords">44.4385° N, 26.0515° E</p>
   </div>
 </div>
 
@@ -123,6 +144,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Draggable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/CustomEase.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+  
+  <!-- Gallery Configuration -->
+  <script src="gallery-config.js"></script>
   
   <!-- Your JavaScript -->
   <script src="scripts.js"></script>

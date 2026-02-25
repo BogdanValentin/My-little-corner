@@ -191,6 +191,8 @@ class FashionGallery {
     this._isDragging = false;
     this._isAnimating = false;
     this.viewportObserver = null;
+    this.activeCategory = 'all';
+    this.indexOpen = false;
     // Bound event handler references (so removeEventListener works)
     this._boundHandleSplitAreaClick = this.handleSplitAreaClick.bind(this);
     this._boundHandleZoomKeys = this.handleZoomKeys.bind(this);
@@ -328,16 +330,16 @@ class FashionGallery {
     animate();
   }
   initImageData() {
-    // Fashion portrait images
-    this.fashionImages = [];
+    // Placeholder images (fallback when categories have no photos)
+    this.placeholderImages = [];
     for (let i = 1; i <= 14; i++) {
       const paddedNumber = String(i).padStart(2, "0");
-      this.fashionImages.push(
+      this.placeholderImages.push(
         `https://assets.codepen.io/7558/orange-portrait_${paddedNumber}.jpg`
       );
     }
-    // Image data for titles and descriptions
-    this.imageData = [
+    // Placeholder image data for titles and descriptions
+    this.placeholderImageData = [
       {
         number: "01",
         title: "Begin Before You’re Ready",
@@ -471,6 +473,21 @@ class FashionGallery {
           "Endings are launchpads. Archive the take, thank the light, and start again at one."
       }
     ];
+
+    // Set active images from category config or placeholders
+    if (typeof GALLERY_CATEGORIES !== 'undefined') {
+      const allImages = [];
+      const allData = [];
+      GALLERY_CATEGORIES.forEach(cat => {
+        allImages.push(...cat.images);
+        allData.push(...cat.imageData);
+      });
+      this.fashionImages = allImages.length > 0 ? allImages : this.placeholderImages;
+      this.imageData = allData.length > 0 ? allData : this.placeholderImageData;
+    } else {
+      this.fashionImages = this.placeholderImages;
+      this.imageData = this.placeholderImageData;
+    }
   }
   // Custom line splitting function (since we can't use SplitText)
   splitTextIntoLines(element, text) {
@@ -912,6 +929,167 @@ class FashionGallery {
     if (e.key === "Escape") {
       this.exitZoomMode();
     }
+  }
+  // --- Category Index ---
+  buildCategoryIndex() {
+    const list = document.getElementById('categoryList');
+    if (!list || typeof GALLERY_CATEGORIES === 'undefined') return;
+    list.innerHTML = '';
+
+    // "All Work" row
+    const allRow = document.createElement('div');
+    allRow.className = 'category-row category-row-active';
+    allRow.dataset.category = 'all';
+    const totalPhotos = GALLERY_CATEGORIES.reduce((s, c) => s + c.images.length, 0);
+    allRow.innerHTML = `
+      <span class="category-number">✦</span>
+      <span class="category-name">All Work</span>
+      <span class="category-line"></span>
+      <span class="category-count">${totalPhotos > 0 ? totalPhotos : '—'}</span>
+    `;
+    allRow.addEventListener('mouseenter', () => this.updateCategoryPreview('all', 'All'));
+    allRow.addEventListener('click', () => { this.switchCategory('all'); this.closeCategoryIndex(); });
+    list.appendChild(allRow);
+
+    GALLERY_CATEGORIES.forEach((cat, i) => {
+      const row = document.createElement('div');
+      row.className = 'category-row';
+      row.dataset.category = cat.id;
+      const num = String(i + 1).padStart(2, '0');
+      row.innerHTML = `
+        <span class="category-number">${num}</span>
+        <span class="category-name">${cat.label}</span>
+        <span class="category-line"></span>
+        <span class="category-count">${cat.images.length > 0 ? cat.images.length : '—'}</span>
+      `;
+      row.addEventListener('mouseenter', () => this.updateCategoryPreview(cat.id, cat.label));
+      row.addEventListener('click', () => { this.switchCategory(cat.id); this.closeCategoryIndex(); });
+      list.appendChild(row);
+    });
+  }
+  updateCategoryPreview(categoryId, label) {
+    const letter = document.getElementById('categoryPreviewLetter');
+    const img = document.getElementById('categoryPreviewImg');
+    if (!letter || !img) return;
+    letter.textContent = categoryId === 'all' ? '✦' : label.charAt(0).toUpperCase();
+    const cat = GALLERY_CATEGORIES.find(c => c.id === categoryId);
+    if (cat && cat.cover) {
+      img.src = cat.cover;
+      img.classList.add('visible');
+      letter.style.opacity = '0.05';
+    } else {
+      img.classList.remove('visible');
+      img.src = '';
+      letter.style.opacity = '';
+    }
+  }
+  openCategoryIndex() {
+    const index = document.getElementById('categoryIndex');
+    if (!index || this.indexOpen) return;
+    this.indexOpen = true;
+    index.style.pointerEvents = 'all';
+
+    const rows = index.querySelectorAll('.category-row');
+    const footer = index.querySelector('.category-index-footer');
+    const preview = index.querySelector('.category-preview');
+    const closeBtn = index.querySelector('.category-index-close');
+
+    gsap.set(rows, { y: 30, opacity: 0 });
+    gsap.set(footer, { y: 15, opacity: 0 });
+    gsap.set(preview, { opacity: 0 });
+    if (closeBtn) gsap.set(closeBtn, { opacity: 0, rotate: -90 });
+
+    const tl = gsap.timeline();
+    tl.to(['.header', '.footer'], { opacity: 0, duration: 0.25, ease: 'power2.in' }, 0);
+    tl.to(index, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.1);
+    tl.to(rows, { y: 0, opacity: 1, duration: 0.5, ease: this.customEase, stagger: 0.035 }, 0.15);
+    tl.to(preview, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.2);
+    tl.to(footer, { y: 0, opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.4);
+    if (closeBtn) tl.to(closeBtn, { opacity: 1, rotate: 0, duration: 0.3, ease: 'power2.out' }, 0.3);
+  }
+  closeCategoryIndex() {
+    const index = document.getElementById('categoryIndex');
+    if (!index || !this.indexOpen) return;
+
+    const rows = index.querySelectorAll('.category-row');
+    const footer = index.querySelector('.category-index-footer');
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        this.indexOpen = false;
+        index.style.pointerEvents = 'none';
+        gsap.set(index, { opacity: 0 });
+        const btn = document.getElementById('hamburgerBtn');
+        if (btn) btn.classList.remove('open');
+      }
+    });
+    tl.to(footer, { y: -10, opacity: 0, duration: 0.2, ease: 'power2.in' }, 0);
+    tl.to(rows, { y: -20, opacity: 0, duration: 0.25, ease: 'power2.in', stagger: { each: 0.02, from: 'end' } }, 0);
+    tl.to(index, { opacity: 0, duration: 0.3, ease: 'power2.in' }, 0.15);
+    tl.to(['.header', '.footer'], { opacity: 1, duration: 0.4, ease: 'power2.out' }, 0.35);
+  }
+  switchCategory(categoryId) {
+    if (categoryId === this.activeCategory) return;
+    if (this.zoomState.isActive) this.exitZoomMode();
+    this.activeCategory = categoryId;
+
+    // Update active highlight in the index
+    document.querySelectorAll('.category-row').forEach(row => {
+      row.classList.toggle('category-row-active', row.dataset.category === categoryId);
+    });
+
+    // Resolve images for the category
+    if (categoryId === 'all') {
+      const allImg = []; const allData = [];
+      GALLERY_CATEGORIES.forEach(c => { allImg.push(...c.images); allData.push(...c.imageData); });
+      this.fashionImages = allImg.length > 0 ? allImg : this.placeholderImages;
+      this.imageData = allData.length > 0 ? allData : this.placeholderImageData;
+    } else {
+      const cat = GALLERY_CATEGORIES.find(c => c.id === categoryId);
+      this.fashionImages = (cat && cat.images.length) ? cat.images : this.placeholderImages;
+      this.imageData = (cat && cat.imageData.length) ? cat.imageData : this.placeholderImageData;
+    }
+
+    // Adapt grid proportions to image count
+    const n = this.fashionImages.length;
+    if (n <= 6)       { this.config.rows = 2; this.config.cols = 3; }
+    else if (n <= 12) { this.config.rows = 3; this.config.cols = 4; }
+    else if (n <= 20) { this.config.rows = 4; this.config.cols = 5; }
+    else if (n <= 36) { this.config.rows = 5; this.config.cols = 8; }
+    else              { this.config.rows = 8; this.config.cols = 12; }
+
+    // Update header label
+    const label = document.getElementById('activeCategoryLabel');
+    if (label) {
+      const cat = GALLERY_CATEGORIES.find(c => c.id === categoryId);
+      label.textContent = categoryId === 'all' ? 'All Work' : cat.label;
+    }
+
+    this.transitionGrid();
+  }
+  transitionGrid() {
+    const elements = this.gridItems.map(i => i.element);
+    gsap.to(elements, {
+      opacity: 0, scale: 0.85, duration: 0.3,
+      stagger: { amount: 0.15, from: 'random' },
+      onComplete: () => {
+        this.config.currentGap = this.calculateGapForZoom(this.config.currentZoom);
+        this.generateGridItems();
+        gsap.set(this.canvasWrapper, { scale: this.config.currentZoom });
+        this.calculateGridDimensions(this.config.currentGap);
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const { scaledWidth, scaledHeight } = this.gridDimensions;
+        const cx = (vw - scaledWidth) / 2;
+        const cy = (vh - scaledHeight) / 2;
+        gsap.set(this.canvasWrapper, { x: cx, y: cy });
+        this.lastValidPosition.x = cx;
+        this.lastValidPosition.y = cy;
+        this.playIntroAnimation();
+        this.initDraggable();
+        this.setupViewportObserver();
+      }
+    });
   }
   // --- Scroll-wheel zoom (desktop only) ---
   initScrollZoom() {
@@ -1467,6 +1645,7 @@ initDraggable() {
     });
   }
   init() {
+    this.buildCategoryIndex();
     this.config.currentGap = this.calculateGapForZoom(this.config.currentZoom);
     this.generateGridItems();
 
@@ -1554,13 +1733,23 @@ initDraggable() {
     }
     this.closeButton.addEventListener("click", () => this.exitZoomMode());
     this.soundToggle.addEventListener("click", () => this.soundSystem.toggle());
+    // Category index triggers
+    const indexTrigger = document.getElementById('indexTrigger');
+    if (indexTrigger) indexTrigger.addEventListener('click', () => {
+      if (this.indexOpen) this.closeCategoryIndex(); else this.openCategoryIndex();
+    });
+    const catLabel = document.getElementById('activeCategoryLabel');
+    if (catLabel) catLabel.addEventListener('click', () => this.openCategoryIndex());
+    const catClose = document.getElementById('categoryIndexClose');
+    if (catClose) catClose.addEventListener('click', () => this.closeCategoryIndex());
     // Scroll-wheel zoom (desktop only)
     if (!this.isMobile) {
       this.initScrollZoom();
     }
     // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
-      if (this.zoomState.isActive) return;
+      if (e.key === "Escape" && this.indexOpen) { this.closeCategoryIndex(); return; }
+      if (this.zoomState.isActive || this.indexOpen) return;
       switch (e.key) {
         case "1":
           this.setZoom(0.6);
@@ -1571,6 +1760,10 @@ initDraggable() {
         case "f":
         case "F":
           this.autoFitZoom();
+          break;
+        case "i":
+        case "I":
+          this.openCategoryIndex();
           break;
       }
     });
@@ -1611,58 +1804,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initMobileMenu() {
   const btn = document.getElementById("hamburgerBtn");
-  const overlay = document.getElementById("mobileMenuOverlay");
-  if (!btn || !overlay) return;
-
-  const links = overlay.querySelectorAll(".mobile-menu-link");
-  const footer = overlay.querySelector(".mobile-menu-footer");
-  let isOpen = false;
+  if (!btn) return;
 
   // Show button with delay matching header fade-in
   setTimeout(() => {
     btn.classList.add("visible");
   }, 1200);
 
-  function openMenu() {
-    isOpen = true;
-    btn.classList.add("open");
-    overlay.classList.add("open");
-
-    // Stagger animate links in
-    gsap.fromTo(links, 
-      { y: 30, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, ease: "power2.out", stagger: 0.08, delay: 0.1 }
-    );
-    gsap.fromTo(footer,
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.4, ease: "power2.out", delay: 0.35 }
-    );
-  }
-
-  function closeMenu() {
-    isOpen = false;
-    btn.classList.remove("open");
-
-    gsap.to(links, {
-      y: -20, opacity: 0, duration: 0.3, ease: "power2.in", stagger: 0.04,
-      onComplete: () => {
-        overlay.classList.remove("open");
-        // Reset for next open
-        gsap.set(links, { y: 30, opacity: 0 });
-        gsap.set(footer, { y: 20, opacity: 0 });
-      }
-    });
-    gsap.to(footer, { y: -10, opacity: 0, duration: 0.25, ease: "power2.in" });
-  }
-
   btn.addEventListener("click", () => {
-    if (isOpen) closeMenu(); else openMenu();
-  });
-
-  // Navigate when a link is tapped (allow default browser navigation)
-  links.forEach(link => {
-    link.addEventListener("click", () => {
-      // Let the browser follow the href naturally
-    });
+    if (gallery && gallery.indexOpen) {
+      gallery.closeCategoryIndex();
+      btn.classList.remove("open");
+    } else if (gallery) {
+      gallery.openCategoryIndex();
+      btn.classList.add("open");
+    }
   });
 }
