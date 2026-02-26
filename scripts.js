@@ -225,7 +225,209 @@ class FashionGallery {
         "open": 400,
         "close": 400,
         "zoom-in": 500,
-        "zoom-out": 500
+        "zoom-out": 500,
+        "hover-tick": 80,
+        "select": 200,
+        "menu-open": 400,
+        "menu-close": 400,
+        "toggle": 250,
+        "nav-hover": 100,
+        "whoosh": 350,
+        "confirm": 300
+      },
+      // Web Audio API synth engine for sci-fi sounds
+      _audioCtx: null,
+      _getCtx: () => {
+        if (!this.soundSystem._audioCtx) {
+          this.soundSystem._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.soundSystem._audioCtx.state === 'suspended') {
+          this.soundSystem._audioCtx.resume();
+        }
+        return this.soundSystem._audioCtx;
+      },
+      // Synthesized sci-fi sounds
+      synth: {
+        // Soft resonant pluck — heard on category row hover
+        hoverTick: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const filter = ctx.createBiquadFilter();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(1400, t);
+          osc.frequency.exponentialRampToValueAtTime(900, t + 0.07);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(2100, t);
+          osc2.frequency.exponentialRampToValueAtTime(1350, t + 0.07);
+          osc2.detune.setValueAtTime(5, t);
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1800, t);
+          filter.frequency.exponentialRampToValueAtTime(800, t + 0.08);
+          filter.Q.value = 4;
+          gain.gain.setValueAtTime(0.055, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+          osc.connect(filter);
+          osc2.connect(filter);
+          filter.connect(gain).connect(ctx.destination);
+          osc.start(t); osc.stop(t + 0.09);
+          osc2.start(t); osc2.stop(t + 0.09);
+        },
+        // Confirmation chirp — category selected
+        select: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          // Two-tone chirp
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(800, t);
+          osc1.frequency.exponentialRampToValueAtTime(1400, t + 0.08);
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(1200, t + 0.06);
+          osc2.frequency.exponentialRampToValueAtTime(1800, t + 0.14);
+          gain.gain.setValueAtTime(0.09, t);
+          gain.gain.linearRampToValueAtTime(0.12, t + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start(t);
+          osc1.stop(t + 0.1);
+          osc2.start(t + 0.06);
+          osc2.stop(t + 0.18);
+        },
+        // Rising sweep — menu/index opening
+        menuOpen: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, t);
+          osc.frequency.exponentialRampToValueAtTime(600, t + 0.25);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(400, t);
+          filter.frequency.exponentialRampToValueAtTime(3000, t + 0.2);
+          filter.Q.value = 8;
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.08, t + 0.03);
+          gain.gain.setValueAtTime(0.08, t + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          osc.connect(filter).connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.35);
+        },
+        // Falling sweep — menu/index closing
+        menuClose: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const filter = ctx.createBiquadFilter();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(500, t);
+          osc.frequency.exponentialRampToValueAtTime(100, t + 0.25);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(2500, t);
+          filter.frequency.exponentialRampToValueAtTime(300, t + 0.25);
+          filter.Q.value = 6;
+          gain.gain.setValueAtTime(0.07, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+          osc.connect(filter).connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.3);
+        },
+        // Toggle blip — hamburger/sound toggle
+        toggle: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(1000, t);
+          osc.frequency.exponentialRampToValueAtTime(600, t + 0.08);
+          gain.gain.setValueAtTime(0.1, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.1);
+        },
+        // Soft nav hover — for links
+        navHover: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(3200, t);
+          osc.frequency.exponentialRampToValueAtTime(2400, t + 0.03);
+          gain.gain.setValueAtTime(0.035, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.04);
+        },
+        // Data whoosh — category switch transition
+        whoosh: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          // White noise burst through bandpass
+          const bufferSize = ctx.sampleRate * 0.25;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1000, t);
+          filter.frequency.exponentialRampToValueAtTime(4000, t + 0.1);
+          filter.frequency.exponentialRampToValueAtTime(600, t + 0.25);
+          filter.Q.value = 2;
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.1, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+          noise.connect(filter).connect(gain).connect(ctx.destination);
+          noise.start(t);
+          noise.stop(t + 0.25);
+        },
+        // Confirmation ping — successful action
+        confirm: () => {
+          const ctx = this.soundSystem._getCtx();
+          const t = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, t);
+          osc.frequency.setValueAtTime(1320, t + 0.08);
+          gain.gain.setValueAtTime(0.08, t);
+          gain.gain.linearRampToValueAtTime(0.1, t + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.2);
+        }
+      },
+      // Unified play method — handles both Audio files and synth sounds
+      playSynth: (synthName) => {
+        if (!this.soundSystem.enabled) return;
+        const now = Date.now();
+        const cooldown = this.soundSystem._debounceMs[synthName] || 150;
+        const lastTime = this.soundSystem._lastPlayTime[synthName] || 0;
+        if (now - lastTime < cooldown) return;
+        this.soundSystem._lastPlayTime[synthName] = now;
+        try {
+          const fn = this.soundSystem.synth[synthName];
+          if (fn) fn();
+        } catch (e) {
+          // Silently handle audio errors
+        }
       },
       play: (soundName) => {
         if (!this.soundSystem.enabled || !this.soundSystem.sounds[soundName])
@@ -251,7 +453,7 @@ class FashionGallery {
         if (this.soundSystem.enabled) {
           // Delay sound to prevent flashing during visual updates
           setTimeout(() => {
-            this.soundSystem.play("click");
+            this.soundSystem.playSynth("confirm");
           }, 50);
         }
       }
@@ -947,8 +1149,8 @@ class FashionGallery {
       <span class="category-line"></span>
       <span class="category-count">${totalPhotos > 0 ? totalPhotos : '—'}</span>
     `;
-    allRow.addEventListener('mouseenter', () => this.updateCategoryPreview('all', 'All'));
-    allRow.addEventListener('click', () => { this.switchCategory('all'); this.closeCategoryIndex(); });
+    allRow.addEventListener('mouseenter', () => { this.updateCategoryPreview('all', 'All'); this.soundSystem.playSynth('hoverTick'); });
+    allRow.addEventListener('click', () => { this.soundSystem.playSynth('select'); this.switchCategory('all'); this.closeCategoryIndex(); });
     list.appendChild(allRow);
 
     GALLERY_CATEGORIES.forEach((cat, i) => {
@@ -962,8 +1164,8 @@ class FashionGallery {
         <span class="category-line"></span>
         <span class="category-count">${cat.images.length > 0 ? cat.images.length : '—'}</span>
       `;
-      row.addEventListener('mouseenter', () => this.updateCategoryPreview(cat.id, cat.label));
-      row.addEventListener('click', () => { this.switchCategory(cat.id); this.closeCategoryIndex(); });
+      row.addEventListener('mouseenter', () => { this.updateCategoryPreview(cat.id, cat.label); this.soundSystem.playSynth('hoverTick'); });
+      row.addEventListener('click', () => { this.soundSystem.playSynth('select'); this.switchCategory(cat.id); this.closeCategoryIndex(); });
       list.appendChild(row);
     });
   }
@@ -999,6 +1201,8 @@ class FashionGallery {
     gsap.set(preview, { opacity: 0 });
     if (closeBtn) gsap.set(closeBtn, { opacity: 0, rotate: -90 });
 
+    this.soundSystem.playSynth('menuOpen');
+
     const tl = gsap.timeline();
     tl.to(['.header', '.footer'], { opacity: 0, duration: 0.25, ease: 'power2.in' }, 0);
     tl.to(index, { opacity: 1, duration: 0.35, ease: 'power2.out' }, 0.1);
@@ -1010,6 +1214,7 @@ class FashionGallery {
   closeCategoryIndex() {
     const index = document.getElementById('categoryIndex');
     if (!index || !this.indexOpen) return;
+    this.soundSystem.playSynth('menuClose');
 
     const rows = index.querySelectorAll('.category-row');
     const footer = index.querySelector('.category-index-footer');
@@ -1031,6 +1236,7 @@ class FashionGallery {
   switchCategory(categoryId) {
     if (categoryId === this.activeCategory) return;
     if (this.zoomState.isActive) this.exitZoomMode();
+    this.soundSystem.playSynth('whoosh');
     this.activeCategory = categoryId;
 
     // Update active highlight in the index
@@ -1742,6 +1948,31 @@ initDraggable() {
     if (catLabel) catLabel.addEventListener('click', () => this.openCategoryIndex());
     const catClose = document.getElementById('categoryIndexClose');
     if (catClose) catClose.addEventListener('click', () => this.closeCategoryIndex());
+
+    // Hover sounds for category index footer nav links
+    document.querySelectorAll('.category-index-nav a').forEach(link => {
+      link.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
+      link.addEventListener('click', () => this.soundSystem.playSynth('select'));
+    });
+
+    // Hover sound for "All Work" label
+    if (catLabel) catLabel.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
+
+    // Hover sounds for zoom control buttons
+    document.querySelectorAll('.switch-button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => this.soundSystem.playSynth('hoverTick'));
+    });
+
+    // Hover sound for sound toggle
+    if (this.soundToggle) {
+      this.soundToggle.addEventListener('mouseenter', () => this.soundSystem.playSynth('hoverTick'));
+    }
+
+    // Hover sound for close button (back arrow)
+    if (this.closeButton) {
+      this.closeButton.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
+    }
+
     // Scroll-wheel zoom (desktop only)
     if (!this.isMobile) {
       this.initScrollZoom();
@@ -1812,6 +2043,7 @@ function initMobileMenu() {
   }, 1200);
 
   btn.addEventListener("click", () => {
+    if (gallery) gallery.soundSystem.playSynth("toggle");
     if (gallery && gallery.indexOpen) {
       gallery.closeCategoryIndex();
       btn.classList.remove("open");

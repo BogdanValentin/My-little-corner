@@ -99,7 +99,7 @@ const GALLERY_CATEGORIES = [
   },
   {
     id: 'autoportret',
-    label: 'Autoportret',
+    label: 'Autoportraits',
     cover: null,
     images: [],
     imageData: []
