@@ -39,7 +39,7 @@ body {
 /* ===== NAVIGATION ===== */
 .page-nav {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 1000;
@@ -47,13 +47,14 @@ body {
   gap: 2rem;
   padding: 1.5rem 2rem;
   pointer-events: none;
-  background: linear-gradient(var(--bg) 70%, transparent);
+  background: linear-gradient(transparent, var(--bg) 30%);
 }
 
 .nav-link {
   pointer-events: auto;
   font-family: "TheGoodMonolith", monospace;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: rgb(var(--t), 0.5);
@@ -182,8 +183,8 @@ main {
   background: rgba(var(--t), 0.12);
 }
 
-.line.top  { margin-top: 5rem; }
-.line.bottom { margin-bottom: 5rem; }
+.line.top  { margin-top: 2rem; }
+.line.bottom { margin-bottom: 6rem; }
 
 /* ===== ARTICLE ===== */
 article {
@@ -317,7 +318,7 @@ a:hover { opacity: 0.7; }
   font-size: 1.2rem;
   gap: 1rem;
   position: fixed;
-  bottom: 3rem;
+  bottom: 5rem;
   right: 3rem;
   cursor: pointer;
   text-decoration: none;
@@ -401,7 +402,7 @@ a:hover { opacity: 0.7; }
   .contact-link-big { font-size: 2.2rem; }
 
   .scroll {
-    bottom: 1.5rem;
+    bottom: 4.5rem;
     right: 1.5rem;
   }
 }

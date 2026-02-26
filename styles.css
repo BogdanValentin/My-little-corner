@@ -779,16 +779,16 @@ h3 {
 /* ===== ACTIVE CATEGORY INDICATOR ===== */
 .active-category-indicator {
   font-family: "TheGoodMonolith", monospace;
-  font-size: 24px;
+  font-size: 32px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   transition: color 0.3s ease;
 }
 
 .active-category-indicator:hover {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 1);
 }
 
 #indexTrigger {
@@ -824,10 +824,15 @@ h3 {
   z-index: 2;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   padding: 0.5rem;
   transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.category-index-close svg {
+  width: 32px;
+  height: 32px;
 }
 
 .category-index-close:hover {
@@ -882,10 +887,10 @@ h3 {
 
 .category-number {
   font-family: "TheGoodMonolith", monospace;
-  font-size: 0.8rem;
+  font-size: 1.3rem;
   color: rgba(255, 255, 255, 0.2);
   letter-spacing: 0.1em;
-  min-width: 2.5rem;
+  min-width: 3rem;
   transition: color 0.3s ease;
   flex-shrink: 0;
 }
@@ -960,7 +965,7 @@ h3 {
   font-family: "PPNeueMontreal", sans-serif;
   font-size: clamp(120px, 15vw, 220px);
   font-weight: 600;
-  color: rgba(166, 75, 35, 0.12);
+  color: rgba(166, 75, 35, 0.25);
   user-select: none;
   transition: all 0.4s ease;
   line-height: 1;
@@ -999,7 +1004,7 @@ h3 {
 
 .category-index-nav a {
   font-family: "TheGoodMonolith", monospace;
-  font-size: 0.85rem;
+  font-size: 1.3rem;
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -1022,13 +1027,13 @@ h3 {
 
 .category-index-sep {
   color: rgba(255, 255, 255, 0.15);
-  font-size: 0.85rem;
+  font-size: 1.3rem;
 }
 
 .category-index-coords {
   font-family: "TheGoodMonolith", monospace;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.35);
   letter-spacing: 0.05em;
 }
 
@@ -1244,8 +1249,8 @@ h3 {
   }
 
   .category-number {
-    font-size: 0.7rem;
-    min-width: 2rem;
+    font-size: 1rem;
+    min-width: 2.5rem;
   }
 
   .category-row {
@@ -1264,6 +1269,6 @@ h3 {
   }
 
   .active-category-indicator {
-    font-size: 18px;
+    font-size: 24px;
   }
 }
