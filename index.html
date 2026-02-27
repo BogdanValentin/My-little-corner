@@ -31,8 +31,8 @@
   <div class="mobile-menu-content">
     <nav class="mobile-menu-nav">
       <a href="index.html" class="mobile-menu-link">Gallery</a>
-      <a href="about.html" class="mobile-menu-link">About</a>
-      <a href="contact.html" class="mobile-menu-link">Contact</a>
+      <a href="#" class="mobile-menu-link" data-panel="about">About</a>
+      <a href="#" class="mobile-menu-link" data-panel="contact">Contact</a>
     </nav>
   </div>
 </div>
@@ -52,15 +52,61 @@
       <div class="category-preview-letter" id="categoryPreviewLetter">✦</div>
       <img class="category-preview-img" id="categoryPreviewImg" src="" alt="">
     </div>
+
+    <!-- Inline About Panel -->
+    <div class="index-panel" id="indexPanelAbout">
+      <article class="index-panel-content">
+        <h1>About</h1>
+        <p class="lead">I'm a photographer drawn to light, texture, and the quiet details that shape a moment.</p>
+        <p>My work lives at the intersection of fashion and portraiture — finding the tension between something composed and something unguarded. Every session starts the same way: silence, observation, and a single frame that sets the tone for everything that follows.</p>
+        <p>I believe constraints sharpen vision. A fixed lens, one light source, or a limited palette forces decisions that algorithms can't replicate. The camera is a tool; the eye is the instrument.</p>
+        <h2>Process</h2>
+        <p>Preparation matters more than equipment. Before the shutter opens I've already walked the space, mapped how the light moves, and sketched two or three compositions in my head. The shoot itself is fast — most of my best work comes from the first twenty minutes, when instinct outpaces thought.</p>
+        <p>Post-production is subtraction, not addition. I remove distractions, correct colour casts, and let the subject speak. If a photograph needs heavy editing to work, it didn't work.</p>
+        <h2>Philosophy</h2>
+        <p>Photography is an act of attention. The images that outlast their moment are the ones where someone paid attention — to a crease in fabric, a shift in gaze, the way afternoon light falls across a collarbone.</p>
+        <p>I don't chase trends. I'd rather make one photograph that still feels honest in ten years than a hundred that expire with the season.</p>
+        <p class="sig">— The Photographer</p>
+      </article>
+    </div>
+
+    <!-- Inline Contact Panel -->
+    <div class="index-panel" id="indexPanelContact">
+      <article class="index-panel-content">
+        <h1>Contact</h1>
+        <p class="lead">Let's create something together. Reach out through any of the channels below.</p>
+        <div class="contact-grid">
+          <div class="contact-block">
+            <h3>+Instagram</h3>
+            <a href="https://www.instagram.com/bogdanvalentin977/" target="_blank" class="contact-link-big">@bogdanvalentin977</a>
+            <h3 class="email-heading">+Email</h3>
+            <a href="mailto:bogdanvalentin977@gmail.com" class="contact-link-big">bogdanvalentin977@gmail.com</a>
+            <p class="contact-note">DMs open for enquiries, collaborations, and hello's.</p>
+          </div>
+          <div class="contact-block">
+            <h3>+Location</h3>
+            <p>Based in Bucharest, Romania.</p>
+            <p class="coords">44.4325° N, 26.1062° E</p>
+          </div>
+        </div>
+      </article>
+    </div>
   </div>
   <div class="category-index-footer">
     <div class="category-index-nav">
-      <a href="about.html">About</a>
+      <a href="#" data-panel="about" id="navAbout">About</a>
       <span class="category-index-sep">/</span>
-      <a href="contact.html">Contact</a>
+      <a href="#" data-panel="contact" id="navContact">Contact</a>
     </div>
     <p class="category-index-coords">44.4385° N, 26.0515° E</p>
   </div>
+
+  <!-- Back-to-top for panels -->
+  <button class="panel-scroll-top" id="panelScrollTop" aria-label="Back to top">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 13V3M3 7l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
 </div>
 
 <!-- Main Viewport -->

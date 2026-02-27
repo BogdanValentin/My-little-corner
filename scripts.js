@@ -208,6 +208,8 @@ class FashionGallery {
         click: new Audio("https://assets.codepen.io/7558/glitch-fx-001.mp3"),
         open: new Audio("https://assets.codepen.io/7558/click-glitch-001.mp3"),
         close: new Audio("https://assets.codepen.io/7558/click-glitch-001.mp3"),
+        button: new Audio("sounds/BUTTON.WAV"),
+        liftoff: new Audio("sounds/liftoff.wav"),
         "zoom-in": new Audio(
           "https://assets.codepen.io/7558/whoosh-fx-001.mp3"
         ),
@@ -222,18 +224,13 @@ class FashionGallery {
       _debounceMs: {
         "drag-start": 300,
         "click": 300,
+        "button": 200,
+        "liftoff": 400,
         "open": 400,
         "close": 400,
         "zoom-in": 500,
         "zoom-out": 500,
-        "hover-tick": 80,
-        "select": 200,
-        "menu-open": 400,
-        "menu-close": 400,
-        "toggle": 250,
-        "nav-hover": 100,
-        "whoosh": 350,
-        "confirm": 300
+        "whoosh": 350
       },
       // Web Audio API synth engine for sci-fi sounds
       _audioCtx: null,
@@ -451,10 +448,7 @@ class FashionGallery {
         // Prevent visual conflicts during sound toggle
         if (this.zoomState.isActive) return;
         if (this.soundSystem.enabled) {
-          // Delay sound to prevent flashing during visual updates
-          setTimeout(() => {
-            this.soundSystem.playSynth("confirm");
-          }, 50);
+          // No extra sound on toggle — just visual feedback
         }
       }
     };
@@ -1149,8 +1143,8 @@ class FashionGallery {
       <span class="category-line"></span>
       <span class="category-count">${totalPhotos > 0 ? totalPhotos : '—'}</span>
     `;
-    allRow.addEventListener('mouseenter', () => { this.updateCategoryPreview('all', 'All'); this.soundSystem.playSynth('hoverTick'); });
-    allRow.addEventListener('click', () => { this.soundSystem.playSynth('select'); this.switchCategory('all'); this.closeCategoryIndex(); });
+    allRow.addEventListener('mouseenter', () => { this.updateCategoryPreview('all', 'All'); });
+    allRow.addEventListener('click', () => { this.switchCategory('all'); this.closeCategoryIndex(); });
     list.appendChild(allRow);
 
     GALLERY_CATEGORIES.forEach((cat, i) => {
@@ -1164,8 +1158,8 @@ class FashionGallery {
         <span class="category-line"></span>
         <span class="category-count">${cat.images.length > 0 ? cat.images.length : '—'}</span>
       `;
-      row.addEventListener('mouseenter', () => { this.updateCategoryPreview(cat.id, cat.label); this.soundSystem.playSynth('hoverTick'); });
-      row.addEventListener('click', () => { this.soundSystem.playSynth('select'); this.switchCategory(cat.id); this.closeCategoryIndex(); });
+      row.addEventListener('mouseenter', () => { this.updateCategoryPreview(cat.id, cat.label); });
+      row.addEventListener('click', () => { this.switchCategory(cat.id); this.closeCategoryIndex(); });
       list.appendChild(row);
     });
   }
@@ -1201,7 +1195,7 @@ class FashionGallery {
     gsap.set(preview, { opacity: 0 });
     if (closeBtn) gsap.set(closeBtn, { opacity: 0, rotate: -90 });
 
-    this.soundSystem.playSynth('menuOpen');
+    this.soundSystem.play('liftoff');
 
     const tl = gsap.timeline();
     tl.to(['.header', '.footer'], { opacity: 0, duration: 0.25, ease: 'power2.in' }, 0);
@@ -1214,7 +1208,7 @@ class FashionGallery {
   closeCategoryIndex() {
     const index = document.getElementById('categoryIndex');
     if (!index || !this.indexOpen) return;
-    this.soundSystem.playSynth('menuClose');
+    this.soundSystem.play('liftoff');
 
     const rows = index.querySelectorAll('.category-row');
     const footer = index.querySelector('.category-index-footer');
@@ -1226,6 +1220,17 @@ class FashionGallery {
         gsap.set(index, { opacity: 0 });
         const btn = document.getElementById('hamburgerBtn');
         if (btn) btn.classList.remove('open');
+        // Reset any open panel
+        document.querySelectorAll('.index-panel.active').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.category-index-nav a').forEach(a => a.classList.remove('panel-active'));
+        const scrollBtn = document.getElementById('panelScrollTop');
+        if (scrollBtn) scrollBtn.classList.remove('visible');
+        this._unbindPanelScroll();
+        const catList = document.getElementById('categoryList');
+        const preview = document.getElementById('categoryPreview');
+        if (catList) { catList.style.display = ''; gsap.set(catList, { opacity: 1, x: 0 }); }
+        if (preview) { preview.style.display = ''; gsap.set(preview, { opacity: 1, x: 0 }); }
+        this._activePanel = null;
       }
     });
     tl.to(footer, { y: -10, opacity: 0, duration: 0.2, ease: 'power2.in' }, 0);
@@ -1233,6 +1238,121 @@ class FashionGallery {
     tl.to(index, { opacity: 0, duration: 0.3, ease: 'power2.in' }, 0.15);
     tl.to(['.header', '.footer'], { opacity: 1, duration: 0.4, ease: 'power2.out' }, 0.35);
   }
+
+  /* ---- Show inline About / Contact panel ---- */
+  showIndexPanel(panelName) {
+    const catList = document.getElementById('categoryList');
+    const preview = document.getElementById('categoryPreview');
+    const panel = document.getElementById(panelName === 'about' ? 'indexPanelAbout' : 'indexPanelContact');
+    if (!panel) return;
+
+    // If same panel is already open, toggle back to categories
+    if (this._activePanel === panelName) {
+      this.hideIndexPanel();
+      return;
+    }
+
+    this.soundSystem.play('button');
+
+    // Highlight active nav link
+    document.querySelectorAll('.category-index-nav a').forEach(a => a.classList.remove('panel-active'));
+    const navLink = document.querySelector(`.category-index-nav a[data-panel="${panelName}"]`);
+    if (navLink) navLink.classList.add('panel-active');
+
+    const alreadyHasPanel = document.querySelector('.index-panel.active');
+
+    if (alreadyHasPanel) {
+      // Switch between panels (About ↔ Contact)
+      const scrollBtn = document.getElementById('panelScrollTop');
+      if (scrollBtn) scrollBtn.classList.remove('visible');
+      gsap.to(alreadyHasPanel, {
+        opacity: 0, x: 30, duration: 0.2, ease: 'power2.in',
+        onComplete: () => {
+          alreadyHasPanel.classList.remove('active');
+          panel.classList.add('active');
+          panel.scrollTop = 0;
+          this._bindPanelScroll(panel);
+          gsap.set(panel, { opacity: 0, x: -30 });
+          gsap.to(panel, { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out' });
+        }
+      });
+    } else {
+      // First open: animate out category list + preview, then show panel
+      const tl = gsap.timeline();
+      tl.to([catList, preview], {
+        opacity: 0, x: -30, duration: 0.3, ease: 'power2.in',
+        onComplete: () => {
+          catList.style.display = 'none';
+          preview.style.display = 'none';
+          panel.classList.add('active');
+          panel.scrollTop = 0;
+          this._bindPanelScroll(panel);
+          gsap.set(panel, { opacity: 0, x: 30 });
+          gsap.to(panel, { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out' });
+        }
+      });
+    }
+
+    this._activePanel = panelName;
+  }
+
+  hideIndexPanel() {
+    const catList = document.getElementById('categoryList');
+    const preview = document.getElementById('categoryPreview');
+    const activePanel = document.querySelector('.index-panel.active');
+
+    this.soundSystem.play('button');
+
+    // Clear nav highlight & hide back-to-top
+    document.querySelectorAll('.category-index-nav a').forEach(a => a.classList.remove('panel-active'));
+    const scrollBtn = document.getElementById('panelScrollTop');
+    if (scrollBtn) scrollBtn.classList.remove('visible');
+    this._unbindPanelScroll();
+
+    if (activePanel) {
+      const tl = gsap.timeline();
+      tl.to(activePanel, {
+        opacity: 0, x: 30, duration: 0.25, ease: 'power2.in',
+        onComplete: () => {
+          activePanel.classList.remove('active');
+          catList.style.display = '';
+          preview.style.display = '';
+          gsap.set([catList, preview], { opacity: 0, x: -30 });
+          gsap.to([catList, preview], { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out' });
+        }
+      });
+    } else {
+      catList.style.display = '';
+      preview.style.display = '';
+    }
+
+    this._activePanel = null;
+  }
+
+  /* ---- Panel scroll tracking (back-to-top visibility) ---- */
+  _bindPanelScroll(panel) {
+    this._unbindPanelScroll();
+    const scrollBtn = document.getElementById('panelScrollTop');
+    this._panelScrollHandler = () => {
+      if (!scrollBtn) return;
+      if (panel.scrollTop > 120) {
+        scrollBtn.classList.add('visible');
+      } else {
+        scrollBtn.classList.remove('visible');
+      }
+    };
+    panel.addEventListener('scroll', this._panelScrollHandler, { passive: true });
+    this._panelScrollTarget = panel;
+  }
+
+  _unbindPanelScroll() {
+    if (this._panelScrollHandler && this._panelScrollTarget) {
+      this._panelScrollTarget.removeEventListener('scroll', this._panelScrollHandler);
+    }
+    this._panelScrollHandler = null;
+    this._panelScrollTarget = null;
+  }
+
   switchCategory(categoryId) {
     if (categoryId === this.activeCategory) return;
     if (this.zoomState.isActive) this.exitZoomMode();
@@ -1949,29 +2069,25 @@ initDraggable() {
     const catClose = document.getElementById('categoryIndexClose');
     if (catClose) catClose.addEventListener('click', () => this.closeCategoryIndex());
 
-    // Hover sounds for category index footer nav links
+    // Click sounds for category index footer nav links (inline panels)
     document.querySelectorAll('.category-index-nav a').forEach(link => {
-      link.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
-      link.addEventListener('click', () => this.soundSystem.playSynth('select'));
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const panel = link.dataset.panel;
+        if (panel) this.showIndexPanel(panel);
+      });
     });
 
-    // Hover sound for "All Work" label
-    if (catLabel) catLabel.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
-
-    // Hover sounds for zoom control buttons
-    document.querySelectorAll('.switch-button').forEach(btn => {
-      btn.addEventListener('mouseenter', () => this.soundSystem.playSynth('hoverTick'));
-    });
-
-    // Hover sound for sound toggle
-    if (this.soundToggle) {
-      this.soundToggle.addEventListener('mouseenter', () => this.soundSystem.playSynth('hoverTick'));
+    // Back-to-top button for inline panels
+    const scrollTopBtn = document.getElementById('panelScrollTop');
+    if (scrollTopBtn) {
+      scrollTopBtn.addEventListener('click', () => {
+        const activePanel = document.querySelector('.index-panel.active');
+        if (activePanel) activePanel.scrollTo({ top: 0, behavior: 'smooth' });
+      });
     }
 
-    // Hover sound for close button (back arrow)
-    if (this.closeButton) {
-      this.closeButton.addEventListener('mouseenter', () => this.soundSystem.playSynth('navHover'));
-    }
+    // Zoom control buttons — zoom sounds already play via setZoom/autoFitZoom
 
     // Scroll-wheel zoom (desktop only)
     if (!this.isMobile) {
@@ -2043,7 +2159,7 @@ function initMobileMenu() {
   }, 1200);
 
   btn.addEventListener("click", () => {
-    if (gallery) gallery.soundSystem.playSynth("toggle");
+    if (gallery) gallery.soundSystem.play("liftoff");
     if (gallery && gallery.indexOpen) {
       gallery.closeCategoryIndex();
       btn.classList.remove("open");
@@ -2051,5 +2167,31 @@ function initMobileMenu() {
       gallery.openCategoryIndex();
       btn.classList.add("open");
     }
+  });
+
+  // Mobile menu nav links
+  document.querySelectorAll('.mobile-menu-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const panel = link.dataset.panel;
+      if (panel && gallery) {
+        // Close mobile menu, open category index, then show panel
+        const mobileOverlay = document.querySelector('.mobile-menu-overlay');
+        if (mobileOverlay) mobileOverlay.classList.remove('active');
+        btn.classList.remove('open');
+        if (!gallery.indexOpen) {
+          gallery.openCategoryIndex();
+          btn.classList.add('open');
+          // Wait for index to open before showing panel
+          setTimeout(() => gallery.showIndexPanel(panel), 500);
+        } else {
+          gallery.showIndexPanel(panel);
+        }
+      } else {
+        const href = link.getAttribute('href');
+        if (gallery) gallery.soundSystem.play('liftoff');
+        setTimeout(() => { window.location.href = href; }, 300);
+      }
+    });
   });
 }
