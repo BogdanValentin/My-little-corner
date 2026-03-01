@@ -11,8 +11,8 @@ function updateScroller() {
       100
   );
 
-  const maskOne = document.querySelector(".mask.one");
-  const maskTwo = document.querySelector(".mask.two");
+  const maskOne = document.querySelector(".one");
+  const maskTwo = document.querySelector(".two");
   if (maskOne) maskOne.textContent = `${top}%`;
   if (maskTwo) maskTwo.textContent = `${bottom}%`;
 

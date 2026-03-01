@@ -1333,12 +1333,14 @@ class FashionGallery {
   _bindPanelScroll(panel) {
     this._unbindPanelScroll();
     const scrollBtn = document.getElementById('panelScrollTop');
+
     this._panelScrollHandler = () => {
-      if (!scrollBtn) return;
-      if (panel.scrollTop > 120) {
-        scrollBtn.classList.add('visible');
-      } else {
-        scrollBtn.classList.remove('visible');
+      if (scrollBtn) {
+        if (panel.scrollTop > 120) {
+          scrollBtn.classList.add('visible');
+        } else {
+          scrollBtn.classList.remove('visible');
+        }
       }
     };
     panel.addEventListener('scroll', this._panelScrollHandler, { passive: true });
@@ -2081,7 +2083,8 @@ initDraggable() {
     // Back-to-top button for inline panels
     const scrollTopBtn = document.getElementById('panelScrollTop');
     if (scrollTopBtn) {
-      scrollTopBtn.addEventListener('click', () => {
+      scrollTopBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         const activePanel = document.querySelector('.index-panel.active');
         if (activePanel) activePanel.scrollTo({ top: 0, behavior: 'smooth' });
       });
