@@ -210,6 +210,7 @@ class FashionGallery {
         close: new Audio("https://assets.codepen.io/7558/click-glitch-001.mp3"),
         button: new Audio("sounds/BUTTON.WAV"),
         liftoff: new Audio("sounds/liftoff.wav"),
+        land: new Audio("sounds/land.wav"),
         "zoom-in": new Audio(
           "https://assets.codepen.io/7558/whoosh-fx-001.mp3"
         ),
@@ -226,6 +227,7 @@ class FashionGallery {
         "click": 300,
         "button": 200,
         "liftoff": 400,
+        "land": 400,
         "open": 400,
         "close": 400,
         "zoom-in": 500,
@@ -1208,7 +1210,7 @@ class FashionGallery {
   closeCategoryIndex() {
     const index = document.getElementById('categoryIndex');
     if (!index || !this.indexOpen) return;
-    this.soundSystem.play('liftoff');
+    this.soundSystem.play('land');
 
     const rows = index.querySelectorAll('.category-row');
     const footer = index.querySelector('.category-index-footer');
