@@ -158,6 +158,8 @@ class FashionGallery {
     this.splitScreenContainer = document.getElementById("splitScreenContainer");
     this.imageTitleOverlay = document.getElementById("imageTitleOverlay");
     this.closeButton = document.getElementById("closeButton");
+    this.navPrev = document.getElementById("navPrev");
+    this.navNext = document.getElementById("navNext");
     this.controlsContainer = document.getElementById("controlsContainer");
     this.soundToggle = document.getElementById("soundToggle");
     // Create custom eases
@@ -167,7 +169,8 @@ class FashionGallery {
     this.isMobile = window.innerWidth <= 768 || ('ontouchstart' in window && window.innerWidth <= 1024);
     // Configuration — smaller tiles on mobile, same grid count
     this.config = {
-      itemSize: this.isMobile ? 200 : 320,
+      itemWidth: this.isMobile ? 260 : 400,
+      itemHeight: this.isMobile ? 195 : 300,
       baseGap: this.isMobile ? 10 : 16,
       rows: 8,
       cols: 12,
@@ -744,8 +747,8 @@ class FashionGallery {
     else return 64;
   }
   calculateGridDimensions(gap = this.config.currentGap) {
-    const totalWidth = this.config.cols * (this.config.itemSize + gap) - gap;
-    const totalHeight = this.config.rows * (this.config.itemSize + gap) - gap;
+    const totalWidth = this.config.cols * (this.config.itemWidth + gap) - gap;
+    const totalHeight = this.config.rows * (this.config.itemHeight + gap) - gap;
     this.gridDimensions = {
       width: totalWidth,
       height: totalHeight,
@@ -768,12 +771,12 @@ class FashionGallery {
       for (let col = 0; col < this.config.cols; col++) {
         const item = document.createElement("div");
         item.className = "grid-item";
-        item.style.width = this.config.itemSize + "px";
-        item.style.height = this.config.itemSize + "px";
+        item.style.width = this.config.itemWidth + "px";
+        item.style.height = this.config.itemHeight + "px";
 
         // Calculate final grid position
-        const x = col * (this.config.itemSize + this.config.currentGap);
-        const y = row * (this.config.itemSize + this.config.currentGap);
+        const x = col * (this.config.itemWidth + this.config.currentGap);
+        const y = row * (this.config.itemHeight + this.config.currentGap);
 
         // Set to grid position
         item.style.left = `${x}px`;
@@ -787,7 +790,7 @@ class FashionGallery {
         ];
         imageIndex++;
         const img = document.createElement("img");
-        img.src = imageUrl;
+        img.src = this.toThumbPath(imageUrl);
         img.alt = `Fashion Portrait ${imageIndex}`;
         item.appendChild(img);
         const itemData = {
@@ -853,6 +856,20 @@ class FashionGallery {
       this.viewportObserver.observe(item.element);
     });
   }
+  // --- Path helpers for optimized images ---
+  // Convert "photos/animals/01.jpg" → "photos/animals/thumbs/01.jpg"
+  toThumbPath(url) {
+    return url.replace(/\/([^/]+)$/, '/thumbs/$1');
+  }
+  // Convert any path (original or thumb) → "photos/animals/full/01.jpg"
+  toFullPath(url) {
+    // If it's already a full URL from the browser, extract the relative path
+    try { url = new URL(url).pathname; } catch(e) { /* already relative */ }
+    // Strip /thumbs/ or /full/ if present
+    const clean = url.replace(/\/(thumbs|full)\//, '/');
+    return clean.replace(/\/([^/]+)$/, '/full/$1');
+  }
+
   updateTitleOverlay(imageIndex) {
     const data = this.imageData[imageIndex % this.imageData.length];
     const numberElement = document.querySelector("#imageSlideNumber span");
@@ -872,7 +889,8 @@ class FashionGallery {
     const overlay = document.createElement("div");
     overlay.className = "scaling-image-overlay";
     const img = document.createElement("img");
-    img.src = sourceImg.src;
+    // Use full-size version for the zoom overlay
+    img.src = this.toFullPath(sourceImg.src);
     img.alt = sourceImg.alt;
     overlay.appendChild(img);
     document.body.appendChild(overlay);
@@ -974,7 +992,7 @@ class FashionGallery {
     gsap.fromTo(
       this.closeButton,
       {
-        x: 40,
+        x: 20,
         opacity: 0
       },
       {
@@ -986,6 +1004,14 @@ class FashionGallery {
       }
     );
     this.closeButton.classList.add("active");
+    // Show nav buttons
+    this.navPrev.classList.add("active");
+    this.navNext.classList.add("active");
+    gsap.fromTo(this.navPrev, { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out", delay: 1.0 });
+    gsap.fromTo(this.navNext, { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out", delay: 1.05 });
+    // Wire nav button clicks
+    this.navPrev.onclick = () => this.navigateZoom(-1);
+    this.navNext.onclick = () => this.navigateZoom(1);
     // Add event listeners (use stored bound references so they can be removed)
     document
       .getElementById("splitLeft")
@@ -1070,10 +1096,17 @@ class FashionGallery {
     }
     // Remove active class immediately so pointer-events are disabled
     this.closeButton.classList.remove("active");
+    // Hide nav buttons
+    this.navPrev.classList.remove("active");
+    this.navNext.classList.remove("active");
+    gsap.to(this.navPrev, { opacity: 0, y: 15, duration: 0.3, ease: "power2.in" });
+    gsap.to(this.navNext, { opacity: 0, y: 15, duration: 0.3, ease: "power2.in" });
+    this.navPrev.onclick = null;
+    this.navNext.onclick = null;
     gsap.to(this.closeButton, {
       duration: 0.3,
       opacity: 0,
-      x: 40,
+      x: 20,
       ease: "power2.in"
     });
     splitContainer.classList.remove("active");
@@ -1126,7 +1159,73 @@ class FashionGallery {
     if (!this.zoomState.isActive) return;
     if (e.key === "Escape") {
       this.exitZoomMode();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      this.navigateZoom(1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      this.navigateZoom(-1);
     }
+  }
+  navigateZoom(direction) {
+    if (!this.zoomState.isActive || !this.zoomState.selectedItem) return;
+    if (this._isNavigating) return;
+    this._isNavigating = true;
+
+    const currentIndex = this.zoomState.selectedItem.index;
+    const totalItems = this.gridItems.length;
+    const newIndex = (currentIndex + direction + totalItems) % totalItems;
+    const newItemData = this.gridItems[newIndex];
+
+    this.soundSystem.play('click');
+
+    const overlay = this.zoomState.scalingOverlay;
+    if (!overlay) { this._isNavigating = false; return; }
+
+    const slideDir = direction > 0 ? -1 : 1;
+
+    // Animate current image out
+    gsap.to(overlay, {
+      x: slideDir * 80,
+      opacity: 0,
+      duration: 0.35,
+      ease: 'power2.in',
+      onComplete: () => {
+        // Swap source
+        const img = overlay.querySelector('img');
+        img.src = this.toFullPath(newItemData.imageUrl);
+
+        // Update stored reference
+        this.zoomState.selectedItem = newItemData;
+
+        // Update title overlay
+        this.updateTitleOverlay(newItemData.index);
+
+        // Animate in from opposite side
+        gsap.fromTo(overlay,
+          { x: -slideDir * 80, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.4, ease: 'power2.out',
+            onComplete: () => { this._isNavigating = false; }
+          }
+        );
+
+        // Animate title text
+        gsap.fromTo('#imageSlideNumber span',
+          { y: 15 * direction, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, ease: this.customEase, delay: 0.05 }
+        );
+        gsap.fromTo('#imageSlideTitle h1',
+          { y: 30 * direction, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, ease: this.customEase, delay: 0.1 }
+        );
+        if (this.descriptionLines) {
+          gsap.fromTo(this.descriptionLines,
+            { y: 40 * direction, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.5, ease: this.customEase, delay: 0.15, stagger: 0.08 }
+          );
+        }
+      }
+    });
   }
   // --- Category Index ---
   buildCategoryIndex() {
@@ -1498,8 +1597,8 @@ class FashionGallery {
     if (newGap !== this.config.currentGap) {
       // Animate grid items to new gap positions
       this.gridItems.forEach((itemData) => {
-        const newX = itemData.col * (this.config.itemSize + newGap);
-        const newY = itemData.row * (this.config.itemSize + newGap);
+        const newX = itemData.col * (this.config.itemWidth + newGap);
+        const newY = itemData.row * (this.config.itemHeight + newGap);
         itemData.baseX = newX;
         itemData.baseY = newY;
         gsap.to(itemData.element, {
@@ -1510,8 +1609,8 @@ class FashionGallery {
         });
       });
 
-      const newWidth = this.config.cols * (this.config.itemSize + newGap) - newGap;
-      const newHeight = this.config.rows * (this.config.itemSize + newGap) - newGap;
+      const newWidth = this.config.cols * (this.config.itemWidth + newGap) - newGap;
+      const newHeight = this.config.rows * (this.config.itemHeight + newGap) - newGap;
       gsap.to(this.canvasWrapper, {
         duration: 0.8,
         width: newWidth,
@@ -1661,9 +1760,9 @@ initDraggable() {
     const vh = window.innerHeight - 80;
     const currentGap = this.calculateGapForZoom(1.0);
     const gridWidth =
-      this.config.cols * (this.config.itemSize + currentGap) - currentGap;
+      this.config.cols * (this.config.itemWidth + currentGap) - currentGap;
     const gridHeight =
-      this.config.rows * (this.config.itemSize + currentGap) - currentGap;
+      this.config.rows * (this.config.itemHeight + currentGap) - currentGap;
     const margin = 40;
     const availableWidth = vw - margin * 2;
     const availableHeight = vh - margin * 2;
@@ -1683,9 +1782,9 @@ initDraggable() {
     const canvasY = canvasMatrix.m42;
     const canvasScale = canvasMatrix.a;
     const centerX =
-      (screenCenterX - canvasX) / canvasScale - this.config.itemSize / 2;
+      (screenCenterX - canvasX) / canvasScale - this.config.itemWidth / 2;
     const centerY =
-      (screenCenterY - canvasY) / canvasScale - this.config.itemSize / 2;
+      (screenCenterY - canvasY) / canvasScale - this.config.itemHeight / 2;
 
     // Position items at center but keep hidden
     this.gridItems.forEach((itemData, index) => {
@@ -1810,8 +1909,8 @@ initDraggable() {
       onComplete: () => {
         if (newGap !== this.config.currentGap) {
           this.gridItems.forEach((itemData) => {
-            const newX = itemData.col * (this.config.itemSize + newGap);
-            const newY = itemData.row * (this.config.itemSize + newGap);
+            const newX = itemData.col * (this.config.itemWidth + newGap);
+            const newY = itemData.row * (this.config.itemHeight + newGap);
             itemData.baseX = newX;
             itemData.baseY = newY;
             gsap.to(itemData.element, {
@@ -1822,9 +1921,9 @@ initDraggable() {
             });
           });
           const newWidth =
-            this.config.cols * (this.config.itemSize + newGap) - newGap;
+            this.config.cols * (this.config.itemWidth + newGap) - newGap;
           const newHeight =
-            this.config.rows * (this.config.itemSize + newGap) - newGap;
+            this.config.rows * (this.config.itemHeight + newGap) - newGap;
           gsap.to(this.canvasWrapper, {
             duration: 1.0,
             width: newWidth,
@@ -1893,8 +1992,8 @@ initDraggable() {
       onComplete: () => {
         if (newGap !== this.config.currentGap) {
           this.gridItems.forEach((itemData) => {
-            const newX = itemData.col * (this.config.itemSize + newGap);
-            const newY = itemData.row * (this.config.itemSize + newGap);
+            const newX = itemData.col * (this.config.itemWidth + newGap);
+            const newY = itemData.row * (this.config.itemHeight + newGap);
             itemData.baseX = newX;
             itemData.baseY = newY;
             gsap.to(itemData.element, {
@@ -1905,9 +2004,9 @@ initDraggable() {
             });
           });
           const newWidth =
-            this.config.cols * (this.config.itemSize + newGap) - newGap;
+            this.config.cols * (this.config.itemWidth + newGap) - newGap;
           const newHeight =
-            this.config.rows * (this.config.itemSize + newGap) - newGap;
+            this.config.rows * (this.config.itemHeight + newGap) - newGap;
           gsap.to(this.canvasWrapper, {
             duration: 1.2,
             width: newWidth,

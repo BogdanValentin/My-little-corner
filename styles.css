@@ -357,14 +357,16 @@ h3 {
 
 .grid-item {
   position: absolute;
-  width: 320px;
-  height: 320px;
-  background: #000;
+  width: 400px;
+  height: 300px;
+  background: transparent;
   cursor: pointer;
   will-change: transform, opacity;
   z-index: 1;
   opacity: 1;
   transition: opacity 0.6s ease;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .grid-item.out-of-view {
@@ -378,7 +380,7 @@ h3 {
 .grid-item img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   user-select: none;
   pointer-events: none;
@@ -404,7 +406,7 @@ h3 {
 
 .split-left {
   position: relative;
-  width: 50vw;
+  width: 65vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
@@ -416,14 +418,16 @@ h3 {
 
 .split-right {
   position: relative;
-  width: 50vw;
+  width: 35vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
   z-index: 1;
   cursor: pointer;
+  padding: 3rem 2.5rem;
 }
 
 /* Image target - BEHIND the scaling image */
@@ -437,12 +441,9 @@ h3 {
   z-index: 1;
 }
 
-/* Image title overlay - positioned at bottom left */
+/* Image title overlay - inside right panel */
 .image-title-overlay {
-  position: absolute;
-  bottom: 40px;
-  left: 40px;
-  transform: none;
+  position: relative;
   color: white;
   z-index: 4;
   opacity: 0;
@@ -592,7 +593,7 @@ h3 {
 }
 
 .controls-container.split-mode {
-  left: 75%;
+  left: 82.5%;
 }
 
 .percentage-indicator {
@@ -699,16 +700,16 @@ h3 {
   opacity: 1;
 }
 
-/* Simple 64px white arrow button */
+/* Close button - top right of right panel */
 .close-button {
-  position: fixed;
-  top: 50%;
-  right: 20px;
-  width: 64px;
-  height: 64px;
-  background: none;
-  border: none;
-  border-color: transparent;
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -716,7 +717,10 @@ h3 {
   z-index: 5;
   opacity: 0;
   pointer-events: none;
-  transform: translate(40px, -50%);
+  transform: translate(20px, 0);
+  transition: background 0.3s ease, border-color 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .close-button.active {
@@ -724,12 +728,14 @@ h3 {
 }
 
 .close-button:hover {
-  opacity: 0.7;
+  background: rgba(166, 75, 35, 0.2);
+  border-color: rgba(166, 75, 35, 0.5);
+  opacity: 1;
 }
 
 .close-button svg {
-  width: 64px;
-  height: 64px;
+  width: 18px;
+  height: 18px;
   transform: rotate(180deg);
 }
 
@@ -742,13 +748,71 @@ h3 {
   pointer-events: none;
   will-change: transform, left, top, width, height, opacity;
   overflow: hidden;
+  border-radius: 12px;
 }
 
 .scaling-image-overlay img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+}
+
+/* ===== IMAGE NAVIGATION BUTTONS ===== */
+.image-nav-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.image-nav-btn {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  transform: none;
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.image-nav-btn.active {
+  pointer-events: all;
+}
+
+.image-nav-btn:hover {
+  background: rgba(166, 75, 35, 0.2);
+  border-color: rgba(166, 75, 35, 0.5);
+}
+
+.image-nav-btn:active {
+  transform: scale(0.92);
+}
+
+.image-nav-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.image-nav-prev:hover svg {
+  transform: translateX(-2px);
+}
+
+.image-nav-next:hover svg {
+  transform: translateX(2px);
 }
 
 /* Page vignette effect */
@@ -980,7 +1044,7 @@ h3 {
   transform: translate(-50%, -50%);
   width: 75%;
   height: 70%;
-  object-fit: cover;
+  object-fit: contain;
   opacity: 0;
   transition: opacity 0.5s ease;
 }
@@ -1299,7 +1363,31 @@ h3 {
   }
 
   .split-right {
-    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: auto;
+    padding: 1rem 1.25rem 3.5rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 70%, transparent 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    z-index: 10;
+  }
+
+  .split-right .close-button {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+  }
+
+  .split-right .close-button svg {
+    width: 14px;
+    height: 14px;
   }
 
   /* Zoom target: contain the image, don't crop */
@@ -1322,16 +1410,11 @@ h3 {
     object-fit: contain;
   }
 
-  /* Image title overlay: fixed at bottom, above controls */
+  /* Image title overlay: inherits position from split-right on mobile */
   .image-title-overlay {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 1rem 1rem 3.5rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 70%, transparent 100%);
-    z-index: 10;
+    position: relative;
+    padding: 0;
+    background: none;
   }
 
   .image-slide-number {
@@ -1405,18 +1488,29 @@ h3 {
     height: 0.75em;
   }
 
-  /* Close button: top-right on mobile */
+  /* Close button: mobile override */
   .close-button {
     top: 1rem;
     right: 1rem;
-    width: 44px;
-    height: 44px;
-    transform: translate(40px, 0);
+    width: 40px;
+    height: 40px;
+    transform: translate(20px, 0);
   }
 
   .close-button svg {
-    width: 32px;
-    height: 32px;
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Image nav buttons on mobile */
+  .image-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .image-nav-btn svg {
+    width: 14px;
+    height: 14px;
   }
 
   /* Grid items on mobile */
