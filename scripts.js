@@ -1516,7 +1516,6 @@ class FashionGallery {
         this.lastValidPosition.y = cy;
         this.playIntroAnimation();
         this.initDraggable();
-        this.setupViewportObserver();
       }
     });
   }
@@ -1772,114 +1771,113 @@ initDraggable() {
     return Math.max(0.1, Math.min(2.0, fitZoom));
   }
   playIntroAnimation() {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const screenCenterX = vw / 2;
-    const screenCenterY = vh / 2;
-    const canvasStyle = getComputedStyle(this.canvasWrapper);
-    const canvasMatrix = new DOMMatrix(canvasStyle.transform);
-    const canvasX = canvasMatrix.m41;
-    const canvasY = canvasMatrix.m42;
-    const canvasScale = canvasMatrix.a;
-    const centerX =
-      (screenCenterX - canvasX) / canvasScale - this.config.itemWidth / 2;
-    const centerY =
-      (screenCenterY - canvasY) / canvasScale - this.config.itemHeight / 2;
-
-    // Position items at center but keep hidden
-    this.gridItems.forEach((itemData, index) => {
-      const zIndex = this.gridItems.length - index;
+    // Place items at their grid positions, hidden
+    this.gridItems.forEach((itemData) => {
       gsap.set(itemData.element, {
-        left: centerX,
-        top: centerY,
-        scale: 0.8,
-        zIndex: zIndex,
-        opacity: 0 // Keep hidden, will fade in during animation
+        left: itemData.baseX,
+        top: itemData.baseY,
+        scale: 1,
+        zIndex: 1,
+        opacity: 0
       });
     });
 
-    // Animate from center to grid positions with fade in
-    gsap.to(
-      this.gridItems.map((item) => item.element),
-      {
-        duration: 0.2,
-        left: (index) => this.gridItems[index].baseX,
-        top: (index) => this.gridItems[index].baseY,
-        scale: 1,
-        opacity: 1, // Add fade in
-        ease: "power2.out",
-        stagger: {
-          amount: 1.5,
-          from: "start",
-          grid: [this.config.rows, this.config.cols]
-        },
-        onComplete: () => {
-          this.gridItems.forEach((itemData) => {
-            gsap.set(itemData.element, {
-              zIndex: 1
-            });
-          });
-          // Show controls with staggered animation
-          const percentageIndicator = this.controlsContainer.querySelector(
-            ".percentage-indicator"
-          );
-          const switchElement = this.controlsContainer.querySelector(".switch");
-          const soundToggle = this.controlsContainer.querySelector(
-            ".sound-toggle"
-          );
-          gsap.set(this.controlsContainer, {
-            opacity: 0
-          });
-          gsap.set(percentageIndicator, {
-            x: "-3em"
-          });
-          gsap.set(switchElement, {
-            y: "2em"
-          });
-          gsap.set(soundToggle, {
-            x: "3em"
-          });
-          const navTimeline = gsap.timeline();
-          navTimeline.to(
-            this.controlsContainer,
-            {
-              opacity: 1,
-              duration: 0.5,
-              ease: "power2.out"
-            },
-            0
-          );
-          navTimeline.to(
-            percentageIndicator,
-            {
-              x: 0,
-              duration: 0.2,
-              ease: "power2.out"
-            },
-            0.25
-          );
-          navTimeline.to(
-            switchElement,
-            {
-              y: 0,
-              duration: 0.2,
-              ease: "power2.out"
-            },
-            0.3
-          );
-          navTimeline.to(
-            soundToggle,
-            {
-              x: 0,
-              duration: 0.2,
-              ease: "power2.out"
-            },
-            0.35
-          );
-          this.controlsContainer.classList.add("visible");
-        }
+    // Shuffle order so fade-in is random
+    const shuffled = [...this.gridItems].sort(() => Math.random() - 0.5);
+    const totalWindow = 2; // all done within 2 seconds
+
+    // Each item gets a random delay and random duration
+    const tl = gsap.timeline({
+      onComplete: () => {
+        // Re-enable viewport observer only after intro animation finishes
+        this.setupViewportObserver();
+        // Show controls with staggered animation
+        const percentageIndicator = this.controlsContainer.querySelector(
+          ".percentage-indicator"
+        );
+        const switchElement = this.controlsContainer.querySelector(".switch");
+        const soundToggle = this.controlsContainer.querySelector(
+          ".sound-toggle"
+        );
+        gsap.set(this.controlsContainer, {
+          opacity: 0
+        });
+        gsap.set(percentageIndicator, {
+          x: "-3em"
+        });
+        gsap.set(switchElement, {
+          y: "2em"
+        });
+        gsap.set(soundToggle, {
+          x: "3em"
+        });
+        const navTimeline = gsap.timeline();
+        navTimeline.to(
+          this.controlsContainer,
+          {
+            opacity: 1,
+            duration: 0.5,
+            ease: "power2.out"
+          },
+          0
+        );
+        navTimeline.to(
+          percentageIndicator,
+          {
+            x: 0,
+            duration: 0.2,
+            ease: "power2.out"
+          },
+          0.25
+        );
+        navTimeline.to(
+          switchElement,
+          {
+            y: 0,
+            duration: 0.2,
+            ease: "power2.out"
+          },
+          0.3
+        );
+        navTimeline.to(
+          soundToggle,
+          {
+            x: 0,
+            duration: 0.2,
+            ease: "power2.out"
+          },
+          0.35
+        );
+        this.controlsContainer.classList.add("visible");
       }
-    );
+    });
+
+    // Calculate distance from grid center for each item (0 = center, 1 = edge)
+    const rows = this.config.rows;
+    const cols = this.config.cols;
+    const centerRow = (rows - 1) / 2;
+    const centerCol = (cols - 1) / 2;
+    const maxDist = Math.sqrt(centerRow * centerRow + centerCol * centerCol) || 1;
+
+    const items = this.gridItems.map((itemData) => {
+      const dist = Math.sqrt((itemData.row - centerRow) ** 2 + (itemData.col - centerCol) ** 2);
+      const normDist = dist / maxDist; // 0 = center, 1 = corner
+      return { itemData, normDist };
+    });
+
+    // Smooth wave from center to edges — each item's delay is proportional to distance
+    // with a small per-item jitter so it feels organic, not mechanical
+    items.forEach(({ itemData, normDist }) => {
+      const baseDelay = normDist * 2.0; // smooth spread across 2s
+      const jitter = (Math.random() - 0.5) * 0.3; // ±0.15s wobble
+      const delay = Math.max(0, baseDelay + jitter);
+      const dur = 0.5 + normDist * 0.4 + Math.random() * 0.2; // center fades faster, edges slower
+      tl.to(itemData.element, {
+        opacity: 1,
+        duration: dur,
+        ease: "sine.out"
+      }, delay);
+    });
   }
   autoFitZoom(buttonElement = null) {
     if (this._isAnimating) return;
